@@ -346,7 +346,7 @@
             margin: 2px;
         }
 
-        /* Status de conexão - Estilos para 2 status */
+        /* Status de conexão */
         .status-container {
             display: flex;
             gap: 10px;
@@ -424,6 +424,35 @@
             margin-left: 4px;
         }
 
+        /* Teste API */
+        #teste-api {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 300px;
+            font-size: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 9999;
+            display: none;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        #teste-api strong {
+            color: #1e3a5f;
+        }
+
+        #teste-api .success {
+            color: #10b981;
+        }
+
+        #teste-api .error {
+            color: #ef4444;
+        }
+
         @media (max-width: 768px) {
             header {
                 font-size: 1.1rem;
@@ -470,6 +499,9 @@
 </header>
 
 <div class="container">
+    <!-- Teste API -->
+    <div id="teste-api"></div>
+
     <div class="info">
         <div class="box">
             <h3>💵 Saldo Disponível</h3>
@@ -512,7 +544,7 @@
         </div>
     </div>
 
-    <!-- AÇÕES (proventos a cada 60s) -->
+    <!-- AÇÕES -->
     <div class="card">
         <h2>📈 AÇÕES <span class="badge-categoria">Proventos a cada 60s</span></h2>
         <div class="table-wrapper">
@@ -523,7 +555,7 @@
         </div>
     </div>
 
-    <!-- FIIs (proventos a cada 30s) -->
+    <!-- FIIs -->
     <div class="card">
         <h2>🏢 FUNDOS IMOBILIÁRIOS (FIIs) <span class="badge-categoria">Proventos a cada 30s</span></h2>
         <div class="table-wrapper">
@@ -534,7 +566,7 @@
         </div>
     </div>
 
-    <!-- ETFs (proventos a cada 90s) -->
+    <!-- ETFs -->
     <div class="card">
         <h2>📊 ETFs <span class="badge-categoria">Proventos a cada 90s</span></h2>
         <div class="table-wrapper">
@@ -545,7 +577,7 @@
         </div>
     </div>
 
-    <!-- TESOURO DIRETO (marcação a mercado a cada 120s, sem proventos) -->
+    <!-- TESOURO DIRETO -->
     <div class="card">
         <h2>🇧🇷 TESOURO DIRETO <span class="badge-categoria">Marcação a mercado a cada 120s | Sem proventos</span></h2>
         <div class="table-wrapper">
@@ -588,7 +620,9 @@
 
 <script>
     // ==================== CONFIGURAÇÕES ====================
-    const BRAPI_TOKEN = 'uFgACspaiXowFi5JF9UhUZ';
+    // IMPORTANTE: Substitua pelo seu token pessoal da Brapi
+    // Obtenha em: https://brapi.dev/dashboard
+    const BRAPI_TOKEN = 'SEU_TOKEN_AQUI';
     const BRAPI_BASE_URL = 'https://brapi.dev/api';
     
     let saldo = 10.00;
@@ -731,7 +765,7 @@
         }
     }
 
-    // ==================== STATUS DUPLO ====================
+    // ==================== STATUS ====================
     function atualizarStatusInternet(online) {
         const statusEl = document.getElementById('statusInternet');
         const textoEl = document.getElementById('statusInternetTexto');
@@ -773,7 +807,7 @@
 
     // ==================== API BRAPI ====================
     async function verificarAPI() {
-        if (verificandoAPI) return false;
+        if (verificandoAPI) return apiOnline;
         
         verificandoAPI = true;
         atualizarStatusAPI(false, 'Verificando...');
@@ -782,20 +816,26 @@
             const url = `${BRAPI_BASE_URL}/available?token=${BRAPI_TOKEN}`;
             const response = await fetch(url, { 
                 method: 'GET',
-                headers: { 'Accept': 'application/json' }
+                headers: { 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
             });
             
             if (response.ok) {
-                apiOnline = true;
-                atualizarStatusAPI(true, 'Online');
-                registrar('✅ API Brapi conectada com sucesso!', 'operacao');
-                return true;
-            } else {
-                apiOnline = false;
-                atualizarStatusAPI(false, `Erro ${response.status}`);
-                registrar(`⚠️ API Brapi respondeu com erro ${response.status}`, 'operacao');
-                return false;
+                const data = await response.json();
+                if (data.available) {
+                    apiOnline = true;
+                    atualizarStatusAPI(true, 'Online');
+                    registrar('✅ API Brapi conectada com sucesso!', 'operacao');
+                    return true;
+                }
             }
+            
+            apiOnline = false;
+            atualizarStatusAPI(false, `Erro ${response.status}`);
+            registrar(`⚠️ API Brapi respondeu com erro ${response.status}`, 'operacao');
+            return false;
         } catch (error) {
             apiOnline = false;
             atualizarStatusAPI(false, 'Falha');
@@ -822,18 +862,34 @@
             const tickersList = Object.values(tickersBrapi).join(',');
             const url = `${BRAPI_BASE_URL}/quote/${tickersList}?token=${BRAPI_TOKEN}`;
             
-            const response = await fetch(url);
+            console.log('Buscando dados da API:', url);
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const data = await response.json();
+            console.log('Dados recebidos da API:', data);
             
             if (data.results && data.results.length > 0) {
                 let atualizados = 0;
+                
                 data.results.forEach(item => {
                     const ticker = item.symbol;
-                    const preco = item.regularMarketPrice || item.price || item.close;
+                    
+                    // Mapeamento correto dos campos da API
+                    const preco = item.regularMarketPrice || 
+                                item.price || 
+                                item.close || 
+                                item.lastPrice;
                     
                     if (preco && preco > 0) {
                         // Buscar o ativo correspondente
@@ -865,6 +921,9 @@
                     atualizarStatusAPI(true, 'Online');
                     registrar(`🌐 ${atualizados} ativos atualizados via API Brapi`, 'operacao');
                     return true;
+                } else {
+                    registrar('⚠️ Nenhum ativo foi atualizado pela API', 'operacao');
+                    return false;
                 }
             }
             return false;
@@ -872,7 +931,50 @@
             console.error('Erro ao buscar dados da API:', error);
             apiOnline = false;
             atualizarStatusAPI(false, 'Erro');
-            registrar(`⚠️ Falha ao buscar dados da API. Usando dados offline.`, "operacao");
+            registrar(`⚠️ Falha ao buscar dados da API: ${error.message}`, "operacao");
+            return false;
+        }
+    }
+
+    // ==================== TESTE DA API ====================
+    async function testarAPI() {
+        const testContainer = document.getElementById('teste-api');
+        
+        try {
+            const url = `${BRAPI_BASE_URL}/quote/PETR4?token=${BRAPI_TOKEN}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            testContainer.style.display = 'block';
+            
+            if (response.ok && data.results && data.results.length > 0) {
+                const preco = data.results[0].regularMarketPrice || 
+                            data.results[0].price || 
+                            data.results[0].close;
+                
+                testContainer.innerHTML = `
+                    <strong>🧪 Teste API</strong><br>
+                    <span class="success">✅ Conectado com sucesso!</span><br>
+                    Preço PETR4: <strong>R$ ${preco ? preco.toFixed(2) : 'N/A'}</strong><br>
+                    <small style="color:#888;">Último teste: ${new Date().toLocaleTimeString()}</small>
+                `;
+                return true;
+            } else {
+                testContainer.innerHTML = `
+                    <strong>🧪 Teste API</strong><br>
+                    <span class="error">❌ Falha na conexão</span><br>
+                    Status: ${response.status}<br>
+                    <small style="color:#888;">Verifique seu token em brapi.dev/dashboard</small>
+                `;
+                return false;
+            }
+        } catch (error) {
+            testContainer.style.display = 'block';
+            testContainer.innerHTML = `
+                <strong>🧪 Teste API</strong><br>
+                <span class="error">❌ Erro: ${error.message}</span><br>
+                <small style="color:#888;">Último teste: ${new Date().toLocaleTimeString()}</small>
+            `;
             return false;
         }
     }
@@ -1001,7 +1103,7 @@
         return { variacao, dyAnual, rentabilidade };
     }
 
-    // Renderização das tabelas com métricas
+    // Renderização das tabelas
     function renderAcoes() {
         let html = "";
         acoes.forEach(a => {
@@ -1150,7 +1252,7 @@
         document.getElementById("saldoPoupanca").innerHTML = `R$ ${saldoPoupanca.toFixed(2)}`;
     }
 
-    // Distribuição de proventos separada por categoria
+    // Distribuição de proventos
     function distribuirProventosAcoes() {
         let totalProventoGerado = 0;
         let detalhes = [];
@@ -1257,6 +1359,7 @@
         atualizarPatrimonio();
     }
 
+    // ==================== INICIALIZAÇÃO ====================
     async function inicializarJogo() {
         initEstruturas();
         saldo = 10.00;
@@ -1290,7 +1393,10 @@
         // Tentar verificar API
         await verificarAPI();
         
-        // Tentar buscar dados da API se estiver online
+        // Teste da API
+       // await testarAPI();
+        
+        // Tentar buscar dados da API se estiver online       
         if (navigator.onLine && apiOnline) {
             await buscarPrecosAPI();
         }
@@ -1312,7 +1418,7 @@
         }
     }
 
-    // ==================== EVENT LISTENERS E INICIALIZAÇÃO ====================
+    // ==================== EVENT LISTENERS ====================
     document.getElementById("btnTransferirProventos").addEventListener("click", transferirProventosParaSaldo);
     document.getElementById("btnAplicarPoupanca").addEventListener("click", aplicarPoupanca);
     document.getElementById("btnResgatarPoupanca").addEventListener("click", resgatarPoupanca);
@@ -1338,6 +1444,7 @@
         registrar('📡 Sem conexão com a internet. Modo offline ativado.', 'operacao');
     });
     
+    // ==================== INICIAR ====================
     inicializarJogo();
     
     // Intervalos por categoria

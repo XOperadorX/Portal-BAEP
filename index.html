@@ -346,7 +346,7 @@
             margin: 2px;
         }
 
-        /* Status de conexão - Estilos para 2 status */
+        /* Status de conexão */
         .status-container {
             display: flex;
             gap: 10px;
@@ -424,6 +424,35 @@
             margin-left: 4px;
         }
 
+        /* Teste API */
+        #teste-api {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 300px;
+            font-size: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 9999;
+            display: none;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        #teste-api strong {
+            color: #1e3a5f;
+        }
+
+        #teste-api .success {
+            color: #10b981;
+        }
+
+        #teste-api .error {
+            color: #ef4444;
+        }
+
         @media (max-width: 768px) {
             header {
                 font-size: 1.1rem;
@@ -470,6 +499,9 @@
 </header>
 
 <div class="container">
+    <!-- Teste API -->
+    <div id="teste-api"></div>
+
     <div class="info">
         <div class="box">
             <h3>💵 Saldo Disponível</h3>
@@ -512,7 +544,7 @@
         </div>
     </div>
 
-    <!-- AÇÕES (proventos a cada 60s) -->
+    <!-- AÇÕES -->
     <div class="card">
         <h2>📈 AÇÕES <span class="badge-categoria">Proventos a cada 60s</span></h2>
         <div class="table-wrapper">
@@ -523,7 +555,7 @@
         </div>
     </div>
 
-    <!-- FIIs (proventos a cada 30s) -->
+    <!-- FIIs -->
     <div class="card">
         <h2>🏢 FUNDOS IMOBILIÁRIOS (FIIs) <span class="badge-categoria">Proventos a cada 30s</span></h2>
         <div class="table-wrapper">
@@ -534,7 +566,7 @@
         </div>
     </div>
 
-    <!-- ETFs (proventos a cada 90s) -->
+    <!-- ETFs -->
     <div class="card">
         <h2>📊 ETFs <span class="badge-categoria">Proventos a cada 90s</span></h2>
         <div class="table-wrapper">
@@ -545,7 +577,7 @@
         </div>
     </div>
 
-    <!-- TESOURO DIRETO (marcação a mercado a cada 120s, sem proventos) -->
+    <!-- TESOURO DIRETO -->
     <div class="card">
         <h2>🇧🇷 TESOURO DIRETO <span class="badge-categoria">Marcação a mercado a cada 120s | Sem proventos</span></h2>
         <div class="table-wrapper">
@@ -588,7 +620,670 @@
 
 <script>
     // ==================== CONFIGURAÇÕES ====================
-    const BRAPI_TOKEN = 'uFgACspaiXowFi5JF9UhUZ';
+    // IMPORTANTE: Substitua pelo seu token pessoal da Brapi
+    // Obtenha em: https://brapi.dev/dashboard
+    const BRAPI_TOKEN = 'SEU_TOKEN_AQUI';
+    const BRAPI_BASE_URL = 'https://brapi.dev/api';
+    
+    let saldo = 10.00;
+    let proventosPendentes = 0.0;
+    let saldoPoupanca = 0.00;
+    let rendimentosPoupancaAcumulados = 0.0;
+    let apiOnline = false;
+    let verificandoAPI = false;
+
+    // Histórico de preços para calcular rentabilidade/variação
+    const precoHistorico = {};
+
+    // AÇÕES (dados iniciais offline)
+    const acoes = [
+        { ticker: "PETR4", nome: "Petrobras", tipo: "Ação", preco: 34.50, dividendoUnitario: 0.32, categoria: "Acao" },
+        { ticker: "VALE3", nome: "Vale", tipo: "Ação", preco: 58.90, dividendoUnitario: 0.45, categoria: "Acao" },
+        { ticker: "ITUB4", nome: "Itaú", tipo: "Ação", preco: 31.20, dividendoUnitario: 0.28, categoria: "Acao" }
+    ];
+
+    const fiis = [
+        { ticker: "MXRF11", nome: "Maxi Renda", tipo: "FII", preco: 9.90, dividendoUnitario: 0.11, categoria: "FII" },
+        { ticker: "XPML11", nome: "XP Malls", tipo: "FII", preco: 98.40, dividendoUnitario: 0.92, categoria: "FII" },
+        { ticker: "HGLG11", nome: "Hedge Logística", tipo: "FII", preco: 156.00, dividendoUnitario: 1.35, categoria: "FII" }
+    ];
+
+    const etfs = [
+        { ticker: "BOVA11", nome: "Ibovespa", tipo: "ETF", preco: 121.00, dividendoUnitario: 0.52, categoria: "ETF" },
+        { ticker: "IVVB11", nome: "S&P 500", tipo: "ETF", preco: 330.00, dividendoUnitario: 2.10, categoria: "ETF" }
+    ];
+
+    const tesouros = [
+        { ticker: "TESOURO SELIC", nome: "Tesouro Selic", tipo: "Tesouro Selic", preco: 100.50, vencimento: "2027", dividendoUnitario: 0, categoria: "Tesouro" },
+        { ticker: "TESOURO IPCA+", nome: "Tesouro IPCA+", tipo: "Tesouro IPCA+", preco: 280.30, vencimento: "2035", dividendoUnitario: 0, categoria: "Tesouro" },
+        { ticker: "TESOURO PREFIXADO", nome: "Prefixado", tipo: "Prefixado", preco: 850.00, vencimento: "2031", dividendoUnitario: 0, categoria: "Tesouro" }
+    ];
+
+    let<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Bolsa Brasil - Simulador | Ações, FIIs, ETFs, Tesouro Direto e Poupança</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
+
+        body {
+            background: #eef2f7;
+            padding-bottom: 40px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #002e5d, #001a33);
+            color: white;
+            padding: 18px 24px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+        }
+
+        header span {
+            font-size: 1.9rem;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .info {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 28px;
+        }
+
+        .box {
+            background: white;
+            padding: 18px 20px;
+            border-radius: 24px;
+            flex: 1;
+            min-width: 170px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,46,93,0.08);
+            transition: transform 0.2s;
+        }
+
+        .box:hover { transform: translateY(-2px); }
+        .box h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #2c5a7a; margin-bottom: 10px; }
+        .box h2 { font-size: 1.8rem; font-weight: 700; color: #0a2b44; word-break: break-word; }
+
+        .btn-transferir {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 0.75rem;
+            margin-top: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn-transferir:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            transform: scale(0.98);
+        }
+
+        .btn-poupanca {
+            background: linear-gradient(135deg, #0f766e, #0d6b63);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin: 0 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-poupanca:hover {
+            background: linear-gradient(135deg, #0d6b63, #0a5c54);
+            transform: scale(0.96);
+        }
+
+        .input-poupanca {
+            padding: 8px 12px;
+            border-radius: 40px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.85rem;
+            width: 140px;
+            text-align: center;
+            font-weight: 600;
+            background: #f8fafc;
+        }
+
+        .card {
+            background: white;
+            border-radius: 28px;
+            padding: 18px 20px;
+            margin-bottom: 28px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.05);
+        }
+
+        .card h2 {
+            font-size: 1.35rem;
+            margin-bottom: 18px;
+            border-left: 5px solid #00a859;
+            padding-left: 14px;
+            color: #1e3a5f;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge-categoria {
+            background: #e2e8f0;
+            color: #1e4663;
+            font-size: 0.7rem;
+            border-radius: 30px;
+            padding: 4px 12px;
+            font-weight: normal;
+        }
+
+        .poupanca-destaque {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+            margin-bottom: 24px;
+        }
+
+        .poupanca-flex {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .poupanca-saldo {
+            background: #e6f7ec;
+            padding: 10px 18px;
+            border-radius: 36px;
+            font-weight: bold;
+            color: #0a5c3e;
+            font-size: 1.1rem;
+        }
+
+        .poupanca-acoes {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 550px;
+        }
+
+        th, td {
+            padding: 12px 8px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #f8fafd;
+            color: #1e4663;
+            font-weight: 600;
+        }
+
+        button {
+            padding: 6px 14px;
+            margin: 3px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.75rem;
+        }
+
+        .buy {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 1px 3px rgba(16,185,129,0.3);
+        }
+        .buy:hover { background: #059669; transform: scale(0.96); }
+
+        .sell {
+            background: #ef4444;
+            color: white;
+        }
+        .sell:hover { background: #dc2626; transform: scale(0.96); }
+
+        .btn-carteira-comprar {
+            background: #0f6b3a;
+            color: white;
+            padding: 5px 12px;
+            font-size: 0.7rem;
+        }
+        .btn-carteira-comprar:hover { background: #0a522c; }
+
+        .btn-carteira-vender {
+            background: #b91c1c;
+            color: white;
+            padding: 5px 12px;
+            font-size: 0.7rem;
+        }
+        .btn-carteira-vender:hover { background: #991b1b; }
+
+        .empty-warning {
+            text-align: center;
+            color: #6c86a3;
+            padding: 28px;
+            font-style: italic;
+        }
+
+        #historico {
+            list-style: none;
+            max-height: 210px;
+            overflow-y: auto;
+            background: #fbfef9;
+            border-radius: 20px;
+            padding: 8px 12px;
+        }
+
+        #historico li {
+            padding: 8px 8px;
+            border-bottom: 1px solid #e9edf2;
+            font-size: 0.8rem;
+            font-family: monospace;
+            display: flex;
+            gap: 8px;
+            align-items: baseline;
+        }
+
+        .provento-item {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .transferencia-item {
+            background: #e0f2fe;
+            border-left: 4px solid #0ea5e9;
+        }
+
+        .poupanca-item {
+            background: #dcfce7;
+            border-left: 4px solid #10b981;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #5d7f9e;
+            margin-top: 15px;
+        }
+
+        .badge-tempo {
+            background: #334155;
+            color: white;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.7rem;
+            display: inline-block;
+            margin-left: 12px;
+        }
+
+        .separator-subtitle {
+            font-size: 0.7rem;
+            color: #4a6f8f;
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+
+        .valor-rendimento {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #0d9488;
+        }
+
+        .grupo-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 4px 12px;
+            border-radius: 48px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .grupo-input label {
+            font-weight: 600;
+            color: #1e3a5f;
+            font-size: 0.8rem;
+        }
+
+        .poupanca-row {
+            background: #f0fdf4;
+            font-weight: 500;
+        }
+        
+        .timer-badge {
+            background: #1e4663;
+            color: white;
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 0.65rem;
+            margin-left: 8px;
+        }
+
+        .indicator-green { color: #10b981; font-weight: 600; }
+        .indicator-red { color: #ef4444; font-weight: 600; }
+        .indicator-neutral { color: #6b7280; }
+
+        .metric-cell {
+            font-size: 0.85rem;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: #f1f5f9;
+            display: inline-block;
+            margin: 2px;
+        }
+
+        /* Status de conexão */
+        .status-container {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .status-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .status-online {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .status-offline {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .status-checking {
+            background: #f59e0b;
+            color: white;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+            animation: pulse-status 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse-status {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            flex-shrink: 0;
+        }
+
+        .status-dot.online {
+            animation: pulse-dot-online 1.5s ease-in-out infinite;
+        }
+
+        .status-dot.offline {
+            animation: none;
+        }
+
+        @keyframes pulse-dot-online {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .status-label {
+            font-size: 0.65rem;
+            opacity: 0.9;
+        }
+
+        .fonte-dados {
+            font-size: 0.6rem;
+            opacity: 0.8;
+            margin-left: 4px;
+        }
+
+        /* Teste API */
+        #teste-api {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 300px;
+            font-size: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 9999;
+            display: none;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        #teste-api strong {
+            color: #1e3a5f;
+        }
+
+        #teste-api .success {
+            color: #10b981;
+        }
+
+        #teste-api .error {
+            color: #ef4444;
+        }
+
+        @media (max-width: 768px) {
+            header {
+                font-size: 1.1rem;
+                padding: 12px 16px;
+            }
+            .status-container {
+                width: 100%;
+                justify-content: flex-start;
+                margin-left: 0;
+                margin-top: 8px;
+            }
+            .status-item {
+                font-size: 0.6rem;
+                padding: 3px 10px;
+            }
+            .badge-tempo {
+                font-size: 0.6rem;
+                padding: 3px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <span>🏦</span>BAEP Investimentos - Simulador
+    <span class="badge-tempo">⏱️ Ações: 60s | FIIs: 30s | ETFs: 90s | Tesouro: 120s | Poupança: 60s (0,6%)</span>
+    
+    <!-- STATUS DUPLO -->
+    <div class="status-container">
+        <!-- Status 1: Internet -->
+        <span id="statusInternet" class="status-item status-online">
+            <span class="status-dot online"></span>
+            <span class="status-label">🌐 Internet</span>
+            <span id="statusInternetTexto">Online</span>
+        </span>
+        
+        <!-- Status 2: API Brapi -->
+        <span id="statusAPI" class="status-item status-checking">
+            <span class="status-dot"></span>
+            <span class="status-label">📊 API</span>
+            <span id="statusAPITexto">Verificando...</span>
+        </span>
+    </div>
+</header>
+
+<div class="container">
+    <!-- Teste API -->
+    <div id="teste-api"></div>
+
+    <div class="info">
+        <div class="box">
+            <h3>💵 Saldo Disponível</h3>
+            <h2 id="saldo">R$ 10,00</h2>
+        </div>
+        <div class="box">
+            <h3>🏆 Patrimônio Total</h3>
+            <h2 id="patrimonio">R$ 0,00</h2>
+        </div>
+        <div class="box">
+            <h3>📊 Total Investido</h3>
+            <h2 id="investido">R$ 0,00</h2>
+        </div>
+        <div class="box">
+            <h3>🎁 Proventos Recebidos</h3>
+            <h2 id="proventosAcumulados">R$ 0,00</h2>
+            <button class="btn-transferir" id="btnTransferirProventos">💰 Transferir para Saldo</button>
+        </div>
+    </div>
+
+    <!-- POUPANÇA -->
+    <div class="card poupanca-destaque">
+        <h2>🏦 POUPANÇA BAEP <span class="badge-categoria">Rendimento 0,6% a cada 60s</span></h2>
+        <div class="poupanca-flex">
+            <div class="poupanca-saldo">
+                💰 Saldo na Poupança: <strong id="saldoPoupanca">R$ 0,00</strong>
+            </div>
+            <div class="poupanca-acoes">
+                <div class="grupo-input">
+                    <label>R$</label>
+                    <input type="number" id="valorPoupanca" class="input-poupanca" placeholder="Valor" step="0.01" min="0.01" value="10.00">
+                </div>
+                <button class="btn-poupanca" id="btnAplicarPoupanca">📈 Aplicar</button>
+                <button class="btn-poupanca" id="btnResgatarPoupanca">🏧 Resgatar</button>
+            </div>
+            <div class="valor-rendimento">
+                ⚡ Rendimento de 0,6% sobre o saldo a cada 60s<br>
+                <span style="font-size:0.7rem;">Ex: R$ 10,00 → R$ 10,06</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- AÇÕES -->
+    <div class="card">
+        <h2>📈 AÇÕES <span class="badge-categoria">Proventos a cada 60s</span></h2>
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Ativo</th><th>Preço (R$)</th><th>Rentab. %</th><th>DY Anual %</th><th>Variação %</th><th>Comprar</th><th>Vender</th></tr></thead>
+                <tbody id="tabelaAcoes"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- FIIs -->
+    <div class="card">
+        <h2>🏢 FUNDOS IMOBILIÁRIOS (FIIs) <span class="badge-categoria">Proventos a cada 30s</span></h2>
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Ativo</th><th>Preço (R$)</th><th>Rentab. %</th><th>DY Anual %</th><th>Variação %</th><th>Comprar</th><th>Vender</th></tr></thead>
+                <tbody id="tabelaFIIs"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ETFs -->
+    <div class="card">
+        <h2>📊 ETFs <span class="badge-categoria">Proventos a cada 90s</span></h2>
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Ativo</th><th>Preço (R$)</th><th>Rentab. %</th><th>DY Anual %</th><th>Variação %</th><th>Comprar</th><th>Vender</th></tr></thead>
+                <tbody id="tabelaETFs"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TESOURO DIRETO -->
+    <div class="card">
+        <h2>🇧🇷 TESOURO DIRETO <span class="badge-categoria">Marcação a mercado a cada 120s | Sem proventos</span></h2>
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Título</th><th>Vencimento</th><th>Preço (R$)</th><th>Rentab. %</th><th>Variação %</th><th>Comprar</th><th>Vender</th></tr></thead>
+                <tbody id="tabelaTesouro"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CARTEIRA -->
+    <div class="card">
+        <h2>📋 MINHA CARTEIRA (Todos os ativos)</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ativo</th>
+                        <th>Quantidade</th>
+                        <th>Preço Médio (R$)</th>
+                        <th>Valor Atual (R$)</th>
+                        <th>Rendimentos Recebidos (R$)</th>
+                        <th>Rentab. %</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="carteira"></tbody>
+            </table>
+        </div>
+        <div id="carteiraVaziaMsg" class="empty-warning" style="display: none;">📭 Nenhum ativo na carteira. Compre nas seções acima ou aplique na poupança!</div>
+    </div>
+
+    <!-- EXTRATO -->
+    <div class="card">
+        <h2>📜 EXTRATO</h2>
+        <ul id="historico"></ul>
+    </div>
+    <footer>💡 Saldo inicial: R$ 10,00 • Ações: proventos 60s | FIIs: 30s | ETFs: 90s | Tesouro: marcação 120s | Poupança: 0,6%/60s</footer>
+</div>
+
+<script>
+    // ==================== CONFIGURAÇÕES ====================
+    // IMPORTANTE: Substitua pelo seu token pessoal da Brapi
+    // Obtenha em: https://brapi.dev/dashboard
+    const BRAPI_TOKEN = 'SEU_TOKEN_AQUI';
     const BRAPI_BASE_URL = 'https://brapi.dev/api';
     
     let saldo = 10.00;
@@ -731,7 +1426,7 @@
         }
     }
 
-    // ==================== STATUS DUPLO ====================
+    // ==================== STATUS ====================
     function atualizarStatusInternet(online) {
         const statusEl = document.getElementById('statusInternet');
         const textoEl = document.getElementById('statusInternetTexto');
@@ -773,7 +1468,7 @@
 
     // ==================== API BRAPI ====================
     async function verificarAPI() {
-        if (verificandoAPI) return false;
+        if (verificandoAPI) return apiOnline;
         
         verificandoAPI = true;
         atualizarStatusAPI(false, 'Verificando...');
@@ -782,20 +1477,26 @@
             const url = `${BRAPI_BASE_URL}/available?token=${BRAPI_TOKEN}`;
             const response = await fetch(url, { 
                 method: 'GET',
-                headers: { 'Accept': 'application/json' }
+                headers: { 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
             });
             
             if (response.ok) {
-                apiOnline = true;
-                atualizarStatusAPI(true, 'Online');
-                registrar('✅ API Brapi conectada com sucesso!', 'operacao');
-                return true;
-            } else {
-                apiOnline = false;
-                atualizarStatusAPI(false, `Erro ${response.status}`);
-                registrar(`⚠️ API Brapi respondeu com erro ${response.status}`, 'operacao');
-                return false;
+                const data = await response.json();
+                if (data.available) {
+                    apiOnline = true;
+                    atualizarStatusAPI(true, 'Online');
+                    registrar('✅ API Brapi conectada com sucesso!', 'operacao');
+                    return true;
+                }
             }
+            
+            apiOnline = false;
+            atualizarStatusAPI(false, `Erro ${response.status}`);
+            registrar(`⚠️ API Brapi respondeu com erro ${response.status}`, 'operacao');
+            return false;
         } catch (error) {
             apiOnline = false;
             atualizarStatusAPI(false, 'Falha');
@@ -822,18 +1523,34 @@
             const tickersList = Object.values(tickersBrapi).join(',');
             const url = `${BRAPI_BASE_URL}/quote/${tickersList}?token=${BRAPI_TOKEN}`;
             
-            const response = await fetch(url);
+            console.log('Buscando dados da API:', url);
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const data = await response.json();
+            console.log('Dados recebidos da API:', data);
             
             if (data.results && data.results.length > 0) {
                 let atualizados = 0;
+                
                 data.results.forEach(item => {
                     const ticker = item.symbol;
-                    const preco = item.regularMarketPrice || item.price || item.close;
+                    
+                    // Mapeamento correto dos campos da API
+                    const preco = item.regularMarketPrice || 
+                                item.price || 
+                                item.close || 
+                                item.lastPrice;
                     
                     if (preco && preco > 0) {
                         // Buscar o ativo correspondente
@@ -865,6 +1582,9 @@
                     atualizarStatusAPI(true, 'Online');
                     registrar(`🌐 ${atualizados} ativos atualizados via API Brapi`, 'operacao');
                     return true;
+                } else {
+                    registrar('⚠️ Nenhum ativo foi atualizado pela API', 'operacao');
+                    return false;
                 }
             }
             return false;
@@ -872,7 +1592,50 @@
             console.error('Erro ao buscar dados da API:', error);
             apiOnline = false;
             atualizarStatusAPI(false, 'Erro');
-            registrar(`⚠️ Falha ao buscar dados da API. Usando dados offline.`, "operacao");
+            registrar(`⚠️ Falha ao buscar dados da API: ${error.message}`, "operacao");
+            return false;
+        }
+    }
+
+    // ==================== TESTE DA API ====================
+    async function testarAPI() {
+        const testContainer = document.getElementById('teste-api');
+        
+        try {
+            const url = `${BRAPI_BASE_URL}/quote/PETR4?token=${BRAPI_TOKEN}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            testContainer.style.display = 'block';
+            
+            if (response.ok && data.results && data.results.length > 0) {
+                const preco = data.results[0].regularMarketPrice || 
+                            data.results[0].price || 
+                            data.results[0].close;
+                
+                testContainer.innerHTML = `
+                    <strong>🧪 Teste API</strong><br>
+                    <span class="success">✅ Conectado com sucesso!</span><br>
+                    Preço PETR4: <strong>R$ ${preco ? preco.toFixed(2) : 'N/A'}</strong><br>
+                    <small style="color:#888;">Último teste: ${new Date().toLocaleTimeString()}</small>
+                `;
+                return true;
+            } else {
+                testContainer.innerHTML = `
+                    <strong>🧪 Teste API</strong><br>
+                    <span class="error">❌ Falha na conexão</span><br>
+                    Status: ${response.status}<br>
+                    <small style="color:#888;">Verifique seu token em brapi.dev/dashboard</small>
+                `;
+                return false;
+            }
+        } catch (error) {
+            testContainer.style.display = 'block';
+            testContainer.innerHTML = `
+                <strong>🧪 Teste API</strong><br>
+                <span class="error">❌ Erro: ${error.message}</span><br>
+                <small style="color:#888;">Último teste: ${new Date().toLocaleTimeString()}</small>
+            `;
             return false;
         }
     }
@@ -1001,7 +1764,7 @@
         return { variacao, dyAnual, rentabilidade };
     }
 
-    // Renderização das tabelas com métricas
+    // Renderização das tabelas
     function renderAcoes() {
         let html = "";
         acoes.forEach(a => {
@@ -1150,7 +1913,7 @@
         document.getElementById("saldoPoupanca").innerHTML = `R$ ${saldoPoupanca.toFixed(2)}`;
     }
 
-    // Distribuição de proventos separada por categoria
+    // Distribuição de proventos
     function distribuirProventosAcoes() {
         let totalProventoGerado = 0;
         let detalhes = [];
@@ -1257,6 +2020,7 @@
         atualizarPatrimonio();
     }
 
+    // ==================== INICIALIZAÇÃO ====================
     async function inicializarJogo() {
         initEstruturas();
         saldo = 10.00;
@@ -1290,7 +2054,10 @@
         // Tentar verificar API
         await verificarAPI();
         
-        // Tentar buscar dados da API se estiver online
+        // Teste da API
+       // await testarAPI();
+        
+        // Tentar buscar dados da API se estiver online       
         if (navigator.onLine && apiOnline) {
             await buscarPrecosAPI();
         }
@@ -1312,7 +2079,7 @@
         }
     }
 
-    // ==================== EVENT LISTENERS E INICIALIZAÇÃO ====================
+    // ==================== EVENT LISTENERS ====================
     document.getElementById("btnTransferirProventos").addEventListener("click", transferirProventosParaSaldo);
     document.getElementById("btnAplicarPoupanca").addEventListener("click", aplicarPoupanca);
     document.getElementById("btnResgatarPoupanca").addEventListener("click", resgatarPoupanca);
@@ -1338,6 +2105,7 @@
         registrar('📡 Sem conexão com a internet. Modo offline ativado.', 'operacao');
     });
     
+    // ==================== INICIAR ====================
     inicializarJogo();
     
     // Intervalos por categoria
